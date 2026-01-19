@@ -83,13 +83,11 @@ const findCpuTemp = (temps: IloTemperature[], cpuLabel: string): number | null =
 };
 
 const cpuTargetPercent = (temp: number | null): number => {
-    if (temp === null) return 19; // fallback idle speed
-    if (temp >= 55) return 40;
+    if (temp === null) return 20; // fallback idle speed
+    if (temp >= 55) return 42;
     if (temp >= 45) return 36;
-    if (temp >= 41) return 32;
-    if (temp >= 41) return 28;
-    if (temp >= 40) return 25;
-    return 19;
+    if (temp >= 40) return 30;
+    return 20;
 };
 
 export const createIloSsh = async (): Promise<NodeSSH> => {
