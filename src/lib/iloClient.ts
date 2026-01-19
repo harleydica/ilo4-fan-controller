@@ -84,9 +84,9 @@ const findCpuTemp = (temps: IloTemperature[], cpuLabel: string): number | null =
 
 const cpuTargetPercent = (temp: number | null): number => {
     if (temp === null) return 20; // fallback idle speed
-    if (temp >= 55) return 50;
-    if (temp >= 50) return 42;
+    if (temp >= 55) return 40;
     if (temp >= 45) return 36;
+    if (temp >= 41) return 32;
     if (temp >= 40) return 30;
     return 20;
 };
