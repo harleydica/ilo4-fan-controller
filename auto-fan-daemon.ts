@@ -24,6 +24,12 @@ let previousFanPercents: number[] = [];
 let iterationCount = 0;
 
 const runCheck = async () => {
+    if (iterationCount >= 1000) {
+        console.clear();
+        iterationCount = 0;
+        console.log("🧹 Logs cleared after 1000 checks, counter reset\n");
+    }
+
     iterationCount++;
     const timestamp = new Date().toLocaleString("id-ID");
     
