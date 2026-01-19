@@ -90,7 +90,7 @@ const cpuTargetPercent = (temp: number | null): number => {
     return 25;
 };
 
-const withSshConnection = async (callback: (ssh: NodeSSH) => Promise<void>) => {
+export const createIloSsh = async (): Promise<NodeSSH> => {
     ensureEnv();
     const iloHost = getIloHost();
     const ssh = new NodeSSH();
@@ -104,10 +104,24 @@ const withSshConnection = async (callback: (ssh: NodeSSH) => Promise<void>) => {
         },
     });
 
+    return ssh;
+};
+
+export const disposeIloSsh = (ssh?: NodeSSH | null) => {
+    try {
+        ssh?.dispose();
+    } catch {
+        /* ignore */
+    }
+};
+
+const withSshConnection = async (callback: (ssh: NodeSSH) => Promise<void>) => {
+    const ssh = await createIloSsh();
+
     try {
         await callback(ssh);
     } finally {
-        ssh.dispose();
+        disposeIloSsh(ssh);
     }
 };
 
@@ -151,7 +165,7 @@ type CpuFanCurveResult = {
     cpu2Temp: number | null;
 };
 
-export const applyCpuFanCurve = async (): Promise<CpuFanCurveResult> => {
+export const applyCpuFanCurve = async (session?: NodeSSH): Promise<CpuFanCurveResult> => {
     const payload = await fetchThermalPayload();
     const temps = payload.Temperatures ?? [];
     const fans = payload.Fans ?? [];
@@ -199,13 +213,19 @@ export const applyCpuFanCurve = async (): Promise<CpuFanCurveResult> => {
             console.log(`   Fan ${index + 1}: ${current}% → ${percent}%`);
         });
 
-        await withSshConnection(async (ssh) => {
+        const runWith = async (ssh: NodeSSH) => {
             for (const { index, percent } of fansToUpdate) {
                 const speed = Math.round((percent / 100) * 255);
                 await ssh.execCommand(`fan p ${index} lock ${speed}`);
                 console.log(`   ✓ Fan ${index + 1} set to ${percent}%`);
             }
-        });
+        };
+
+        if (session) {
+            await runWith(session);
+        } else {
+            await withSshConnection(runWith);
+        }
     }
 
     return { fanPercents, cpu1Temp, cpu2Temp };

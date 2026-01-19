@@ -8,7 +8,8 @@
  */
 
 import "dotenv/config";
-import { applyCpuFanCurve } from "./src/lib/iloClient";
+import { NodeSSH } from "node-ssh";
+import { applyCpuFanCurve, createIloSsh, disposeIloSsh } from "./src/lib/iloClient";
 
 const INTERVAL_SECONDS = parseInt(process.argv[2] || "10", 10);
 
@@ -22,6 +23,13 @@ console.log(`📊 Press Ctrl+C to stop\n`);
 
 let previousFanPercents: number[] = [];
 let iterationCount = 0;
+let sshSession: NodeSSH | null = null;
+
+const getSession = async (): Promise<NodeSSH> => {
+    if (sshSession) return sshSession;
+    sshSession = await createIloSsh();
+    return sshSession;
+};
 
 const runCheck = async () => {
     if (iterationCount >= 1000) {
@@ -38,7 +46,8 @@ const runCheck = async () => {
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
     try {
-        const result = await applyCpuFanCurve();
+        const session = await getSession();
+        const result = await applyCpuFanCurve(session);
         
         // Detect changes
         const hasChanges = previousFanPercents.length === 0 || 
@@ -63,6 +72,8 @@ const runCheck = async () => {
 
     } catch (error) {
         console.error("❌ Error:", error instanceof Error ? error.message : String(error));
+        disposeIloSsh(sshSession);
+        sshSession = null;
     }
 };
 
@@ -72,6 +83,7 @@ setInterval(runCheck, INTERVAL_SECONDS * 1000);
 
 // Graceful shutdown
 process.on("SIGINT", () => {
+    disposeIloSsh(sshSession);
     console.log("\n\n👋 Daemon stopped");
     process.exit(0);
 });
