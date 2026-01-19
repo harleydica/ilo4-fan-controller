@@ -182,8 +182,8 @@ export const applyCpuFanCurve = async (session?: NodeSSH): Promise<CpuFanCurveRe
     console.log(`[Fan Curve] CPU 1: ${cpu1Temp !== null ? cpu1Temp + "°C" : "N/A"} → ${cpu1Target}%`);
     console.log(`[Fan Curve] CPU 2: ${cpu2Temp !== null ? cpu2Temp + "°C" : "N/A"} → ${cpu2Target}%`);
 
-    const cpu1Fans = [0, 1, 2, 3]; // fan 1-4
-    const cpu2Fans = [3, 4, 5, 6]; // fan 4-7 (fan 4 overlaps)
+    const cpu2Fans = [0, 1, 2, 3]; // CPU 2 → fan 1-4
+    const cpu1Fans = [3, 4, 5, 6]; // CPU 1 → fan 4-7 (fan 4 overlaps)
 
     const fanPercents = Array.from({ length: fanCount }, () => 25);
 
