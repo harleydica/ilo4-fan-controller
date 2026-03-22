@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { setFanControlMode } from "../../../lib/fanMode";
 import { applyCpuFanCurve } from "../../../lib/iloClient";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -9,8 +10,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     try {
+        await setFanControlMode("auto");
         const result = await applyCpuFanCurve();
-        return res.status(200).json({ message: "ok", ...result });
+        return res.status(200).json({ message: "ok", mode: "auto", ...result });
     } catch (error) {
         const message = error instanceof Error ? error.message : "Unable to apply fan curve";
         return res.status(400).json({ message });

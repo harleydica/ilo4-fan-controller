@@ -9,6 +9,7 @@
 
 import "dotenv/config";
 import { NodeSSH } from "node-ssh";
+import { getFanControlMode } from "./src/lib/fanMode";
 import { applyCpuFanCurve, createIloSsh, disposeIloSsh } from "./src/lib/iloClient";
 
 const INTERVAL_SECONDS = parseInt(process.argv[2] || "10", 10);
@@ -46,6 +47,13 @@ const runCheck = async () => {
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
     try {
+        const fanMode = await getFanControlMode();
+        if (fanMode !== "auto") {
+            console.log("⏸ Manual mode active - skipping auto fan curve");
+            previousFanPercents = [];
+            return;
+        }
+
         const session = await getSession();
         const result = await applyCpuFanCurve(session);
         

@@ -59,10 +59,26 @@ const Home = ({ fans, fail }: Props): JSX.Element => {
     const [unlocking, setUnlocking] = useState<boolean>(false);
     const [presetLoading, setPresetLoading] = useState<number>(0);
     const [autoApplying, setAutoApplying] = useState<boolean>(false);
+    const [modeUpdating, setModeUpdating] = useState<boolean>(false);
 
     useEffect(() => {
         setBaselineSpeeds(initialFanSpeeds);
     }, [initialFanSpeeds]);
+
+    useEffect(() => {
+        const loadMode = async () => {
+            const response = await fetch(`/api/fans/mode`);
+            const payload = await response.json();
+
+            if (response.status === 200 && payload.mode) {
+                setFanMode(payload.mode === "auto" ? "auto" : "manual");
+            }
+        };
+
+        loadMode().catch(() => {
+            setFanMode("manual");
+        });
+    }, []);
 
     const handleUnlock = async () => {
         setUnlocking(true);
@@ -136,6 +152,26 @@ const Home = ({ fans, fail }: Props): JSX.Element => {
         setAutoApplying(false);
     };
 
+    const handleManualMode = async () => {
+        setModeUpdating(true);
+
+        const response = await fetch(`/api/fans/mode`, {
+            method: "POST",
+            body: JSON.stringify({ mode: "manual" }),
+            headers: { "Content-Type": "application/json" },
+        });
+        const payload = await response.json();
+
+        if (response.status === 200) {
+            setFanMode("manual");
+            toast.success("Manual mode enabled");
+        } else {
+            toast.error(payload.message);
+        }
+
+        setModeUpdating(false);
+    };
+
     return (
         <div className="h-screen px-2 pt-4 text-white bg-gray-800 sm:flex sm:justify-center sm:items-center sm:pt-0">
             <Fade direction="left" triggerOnce>
@@ -192,9 +228,10 @@ const Home = ({ fans, fail }: Props): JSX.Element => {
                                                 ? "bg-emerald-600 text-emerald-50"
                                                 : "bg-gray-700 text-gray-200 hover:bg-gray-600"
                                         }`}
-                                        onClick={() => setFanMode("manual")}
+                                        onClick={handleManualMode}
+                                        disabled={modeUpdating || autoApplying}
                                     >
-                                        Manual
+                                        {modeUpdating ? "Applying Manual" : "Manual"}
                                     </button>
                                     <button
                                         type="button"
@@ -204,7 +241,7 @@ const Home = ({ fans, fail }: Props): JSX.Element => {
                                                 : "bg-gray-700 text-gray-200 hover:bg-gray-600"
                                         }`}
                                         onClick={() => handleAutoMode(setFieldValue)}
-                                        disabled={autoApplying}
+                                        disabled={autoApplying || modeUpdating}
                                     >
                                         {autoApplying ? "Applying Auto" : "Auto"}
                                     </button>
