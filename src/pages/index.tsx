@@ -54,9 +54,11 @@ const Home = ({ fans, fail }: Props): JSX.Element => {
 
     const [baselineSpeeds, setBaselineSpeeds] =
         useState<number[]>(initialFanSpeeds);
+    const [fanMode, setFanMode] = useState<"manual" | "auto">("manual");
     const [editAll, setEditAll] = useState<boolean>(false);
     const [unlocking, setUnlocking] = useState<boolean>(false);
     const [presetLoading, setPresetLoading] = useState<number>(0);
+    const [autoApplying, setAutoApplying] = useState<boolean>(false);
 
     useEffect(() => {
         setBaselineSpeeds(initialFanSpeeds);
@@ -102,6 +104,36 @@ const Home = ({ fans, fail }: Props): JSX.Element => {
             toast.error(payload.message);
         }
         setPresetLoading(0);
+    };
+
+    const handleAutoMode = async (
+        update: (
+            field: string,
+            value: unknown,
+            shouldValidate?: boolean
+        ) => void
+    ) => {
+        setAutoApplying(true);
+
+        const response = await fetch(`/api/fans/auto`, {
+            method: "POST",
+        });
+        const payload = await response.json();
+
+        if (response.status === 200) {
+            const nextSpeeds = Array.isArray(payload.fanPercents)
+                ? payload.fanPercents
+                : initialFanSpeeds;
+
+            setFanMode("auto");
+            setBaselineSpeeds(nextSpeeds);
+            update("fans", nextSpeeds);
+            toast.success("Auto mode applied successfully!");
+        } else {
+            toast.error(payload.message);
+        }
+
+        setAutoApplying(false);
     };
 
     return (
@@ -152,12 +184,39 @@ const Home = ({ fans, fail }: Props): JSX.Element => {
                     >
                         {({ errors, isSubmitting, values, setFieldValue }) => (
                             <Form>
+                                <div className="flex items-center justify-center gap-2 mb-4">
+                                    <button
+                                        type="button"
+                                        className={`px-4 py-2 font-semibold duration-150 rounded ${
+                                            fanMode === "manual"
+                                                ? "bg-emerald-600 text-emerald-50"
+                                                : "bg-gray-700 text-gray-200 hover:bg-gray-600"
+                                        }`}
+                                        onClick={() => setFanMode("manual")}
+                                    >
+                                        Manual
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`px-4 py-2 font-semibold duration-150 rounded disabled:bg-gray-500 disabled:cursor-not-allowed ${
+                                            fanMode === "auto"
+                                                ? "bg-cyan-600 text-cyan-50"
+                                                : "bg-gray-700 text-gray-200 hover:bg-gray-600"
+                                        }`}
+                                        onClick={() => handleAutoMode(setFieldValue)}
+                                        disabled={autoApplying}
+                                    >
+                                        {autoApplying ? "Applying Auto" : "Auto"}
+                                    </button>
+                                </div>
                                 <div className="mx-8 my-3 mb-6 sm:flex sm:items-center sm:justify-between sm:mx-1 sm:mb-4">
                                     <label
                                         className="flex items-center mx-auto mb-4 cursor-pointer w-fit sm:mx-0 sm:mb-0"
                                         onClick={(e) => {
                                             e.preventDefault();
-                                            setEditAll(!editAll);
+                                            if (fanMode === "manual") {
+                                                setEditAll(!editAll);
+                                            }
                                         }}
                                     >
                                         <div className="relative">
@@ -165,6 +224,7 @@ const Home = ({ fans, fail }: Props): JSX.Element => {
                                                 type="checkbox"
                                                 className="sr-only"
                                                 checked={editAll}
+                                                disabled={fanMode !== "manual"}
                                             />
                                             <div className="w-10 h-4 bg-gray-800 rounded-full shadow-inner"></div>
                                             <div className="absolute w-6 h-6 transition bg-gray-500 rounded-full shadow dot -left-1 -top-1"></div>
@@ -176,7 +236,7 @@ const Home = ({ fans, fail }: Props): JSX.Element => {
                                     <div className="flex items-center w-full gap-2 sm:w-fit">
                                         <button
                                             className="w-full px-6 py-2 font-semibold duration-150 rounded sm:w-auto disabled:bg-gray-500 disabled:cursor-not-allowed bg-cyan-600 hover:bg-cyan-700 text-cyan-50"
-                                            disabled={presetLoading === 1}
+                                            disabled={presetLoading === 1 || fanMode !== "manual"}
                                             onClick={() =>
                                                 handlePreset(
                                                     32,
@@ -190,7 +250,7 @@ const Home = ({ fans, fail }: Props): JSX.Element => {
                                         </button>
                                         <button
                                             className="w-full px-6 py-2 font-semibold duration-150 rounded sm:w-auto disabled:bg-gray-500 disabled:cursor-not-allowed bg-emerald-600 hover:bg-emerald-700 text-emerald-50"
-                                            disabled={presetLoading === 2}
+                                            disabled={presetLoading === 2 || fanMode !== "manual"}
                                             onClick={() =>
                                                 handlePreset(
                                                     60,
@@ -204,7 +264,7 @@ const Home = ({ fans, fail }: Props): JSX.Element => {
                                         </button>
                                         <button
                                             className="w-full px-6 py-2 font-semibold duration-150 bg-red-500 rounded sm:w-auto disabled:bg-gray-500 disabled:cursor-not-allowed hover:bg-red-600 text-red-50"
-                                            disabled={presetLoading === 3}
+                                            disabled={presetLoading === 3 || fanMode !== "manual"}
                                             onClick={() =>
                                                 handlePreset(
                                                     90,
@@ -234,13 +294,14 @@ const Home = ({ fans, fail }: Props): JSX.Element => {
                                                 values={values.fans}
                                                 update={setFieldValue}
                                                 editAll={editAll}
+                                                disabled={fanMode !== "manual"}
                                             />
                                         </div>
                                     ))}
                                     <div className="flex flex-wrap items-center justify-center w-full gap-2 px-4 mt-6 sm:gap-4 sm:px-0">
                                         <button
                                             className="block w-full px-10 py-2 font-semibold duration-150 rounded sm:hidden sm:w-auto disabled:bg-gray-500 disabled:cursor-not-allowed bg-emerald-600 hover:bg-emerald-700 text-emerald-50"
-                                            disabled={isSubmitting}
+                                            disabled={isSubmitting || fanMode !== "manual"}
                                             title="Update fans to specified speed"
                                         >
                                             {isSubmitting
@@ -250,7 +311,7 @@ const Home = ({ fans, fail }: Props): JSX.Element => {
                                         <div className="flex items-center justify-center w-full gap-2">
                                             <button
                                                 className="hidden w-full px-10 py-2 font-semibold duration-150 rounded sm:block sm:w-auto disabled:bg-gray-500 disabled:cursor-not-allowed bg-emerald-600 hover:bg-emerald-700 text-emerald-50"
-                                                disabled={isSubmitting}
+                                                disabled={isSubmitting || fanMode !== "manual"}
                                                 title="Update fans to specified speed"
                                             >
                                                 {isSubmitting
@@ -266,6 +327,7 @@ const Home = ({ fans, fail }: Props): JSX.Element => {
                                                     )
                                                 }
                                                 type="button"
+                                                disabled={fanMode !== "manual"}
                                                 title="Reset fans to initial speed"
                                             >
                                                 Reset
