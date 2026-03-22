@@ -9,10 +9,12 @@
 
 import "dotenv/config";
 import { NodeSSH } from "node-ssh";
-import { getFanControlMode } from "./src/lib/fanMode";
 import { applyCpuFanCurve, createIloSsh, disposeIloSsh } from "./src/lib/iloClient";
 
 const INTERVAL_SECONDS = parseInt(process.argv[2] || "10", 10);
+const WEB_PORT = process.env.PORT || "3000";
+const FAN_MODE_API_BASE_URL =
+    process.env.FAN_MODE_API_BASE_URL || `http://127.0.0.1:${WEB_PORT}`;
 
 if (INTERVAL_SECONDS < 5) {
     console.error("⚠️  Interval minimum adalah 5 detik untuk menghindari overload iLO");
@@ -32,6 +34,21 @@ const getSession = async (): Promise<NodeSSH> => {
     return sshSession;
 };
 
+const getFanModeFromApi = async (): Promise<"auto" | "manual"> => {
+    try {
+        const response = await fetch(`${FAN_MODE_API_BASE_URL}/api/fans/mode`);
+        const payload = await response.json();
+
+        if (response.ok && (payload.mode === "auto" || payload.mode === "manual")) {
+            return payload.mode;
+        }
+    } catch {
+        // If API is temporarily unavailable, keep daemon safe by defaulting to auto.
+    }
+
+    return "auto";
+};
+
 const runCheck = async () => {
     if (iterationCount >= 1000) {
         console.clear();
@@ -47,7 +64,7 @@ const runCheck = async () => {
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
     try {
-        const fanMode = await getFanControlMode();
+        const fanMode = await getFanModeFromApi();
         if (fanMode !== "auto") {
             console.log("⏸ Manual mode active - skipping auto fan curve");
             previousFanPercents = [];
