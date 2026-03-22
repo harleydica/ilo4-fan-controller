@@ -1,9 +1,12 @@
 import fs from "fs/promises";
+import os from "os";
 import path from "path";
 
 export type FanControlMode = "auto" | "manual";
 
-const MODE_FILE = path.join(process.cwd(), "fan-control-mode.json");
+const MODE_FILE =
+    process.env.FAN_MODE_FILE?.trim() ||
+    path.join(os.tmpdir(), "fan-control-mode.json");
 const DEFAULT_MODE: FanControlMode = "auto";
 
 const isFanControlMode = (value: unknown): value is FanControlMode =>
@@ -27,6 +30,8 @@ export const getFanControlMode = async (): Promise<FanControlMode> => {
 export const setFanControlMode = async (
     mode: FanControlMode
 ): Promise<void> => {
+    await fs.mkdir(path.dirname(MODE_FILE), { recursive: true });
+
     await fs.writeFile(
         MODE_FILE,
         JSON.stringify(

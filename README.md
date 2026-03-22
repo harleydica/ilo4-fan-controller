@@ -70,9 +70,12 @@ docker run -d \
   -e ILO_USERNAME='*your username*' \
   -e ILO_PASSWORD='*your password**' \
   -e ILO_HOST='*the ip address you access ILO on*' \
+  -e FAN_MODE_FILE='/tmp/fan-control-mode.json' \
   --restart unless-stopped \
   local/ilo4-fan-controller:latest-local
 ```
+
+`FAN_MODE_FILE` is optional. If omitted, it defaults to a writable temp path in the container.
 
 You can modify this to work with Rancher, Portainer, etc.
 
